@@ -17,7 +17,7 @@ func main() {
 	_, err := co.AddFunc("*/1 * * * *", func() {
 		_ = social.CronSync(context.TODO())
 	})
-	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"10.203.0.27:9292"}}, []string{social.Topicsync}, "task", "task1name", social.ConsumerSync, 1, 1, time.Second*3)
+	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"10.203.0.27:9092"}}, []string{social.Topicsync}, "task", "task1name", social.ConsumerSync, 1, 1, time.Second*3)
 	if err != nil {
 		panic(err)
 	}

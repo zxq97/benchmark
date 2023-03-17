@@ -30,7 +30,7 @@ func init() {
 	XRedis = &xredis.XRedis{Cmdable: redcli}
 	MC = memcache.New("10.203.0.27:11211")
 	LC = cache.New(time.Second, time.Minute*5)
-	KAFKA, err = kafka.NewProducer(&kafka.Config{Addr: []string{"10.203.0.27:9292"}})
+	KAFKA, err = kafka.NewProducer(&kafka.Config{Addr: []string{"10.203.0.27:9092"}})
 	if err != nil {
 		panic(err)
 	}

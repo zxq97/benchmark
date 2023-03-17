@@ -8,13 +8,13 @@ import (
 
 func TestFollow(t *testing.T) {
 	wg := sync.WaitGroup{}
-	wg.Add(mux)
-	for i := 0; i < mux; i++ {
-		u := g.Gen()
+	wg.Add(Mux)
+	for i := 0; i < Mux; i++ {
+		u := G.Gen()
 		//o := g.Gen()
 		go func() {
 			defer wg.Done()
-			if err := handleFollow(context.TODO(), u, vuid); err != nil {
+			if err := HandleFollow(context.TODO(), u, Vuid); err != nil {
 				t.Error(err)
 			}
 		}()

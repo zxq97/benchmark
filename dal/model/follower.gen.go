@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-const TableNameUserFollower = "user_follower"
+const TableNameFollower = "follower"
 
-// UserFollower mapped from table <user_follower>
-type UserFollower struct {
+// Follower mapped from table <follower>
+type Follower struct {
 	ID          int64     `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
 	UID         int64     `gorm:"column:uid;not null" json:"uid"`
 	FollowerUID int64     `gorm:"column:follower_uid;not null" json:"follower_uid"`
@@ -19,7 +19,7 @@ type UserFollower struct {
 	Mtime       time.Time `gorm:"column:mtime;not null;default:CURRENT_TIMESTAMP" json:"mtime"`
 }
 
-// TableName UserFollower's table name
-func (*UserFollower) TableName() string {
-	return TableNameUserFollower
+// TableName Follower's table name
+func (*Follower) TableName() string {
+	return TableNameFollower
 }

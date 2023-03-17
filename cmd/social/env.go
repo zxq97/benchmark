@@ -5,67 +5,42 @@ import (
 	"bench/dal/query"
 	"log"
 	"os"
-	"sync"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/patrickmn/go-cache"
-	"github.com/robfig/cron/v3"
 	"github.com/zxq97/gokit/pkg/cache/xredis"
 	"github.com/zxq97/gokit/pkg/generate"
+	"github.com/zxq97/gokit/pkg/mq/kafka"
 )
 
 const (
-	mux  = 100000
-	vuid = 1
+	Mux  = 100000
+	Vuid = 1
 
-	followField   = "follow"
-	followerField = "follower"
+	FollowField   = "follow"
+	FollowerField = "follower"
 
-	lockkey = "lock_%d"
-
-	redisKeyHRelationCount = "lra_cnt_%d" // uid
+	Topic     = "poke_post_bar_channel_"
+	Topicsync = "poke_post_bar_channel__"
 )
 
 var (
-	c         *cron.Cron
-	g         *generate.SnowIDGen
-	q         *query.Query
-	xr        *xredis.XRedis
-	mc        *memcache.Client
-	lc        *cache.Cache
-	logger    *log.Logger
-	followch  chan *asyncFollow
-	rebuildch chan *rebuildCache
-	countch   chan *syncCount
-
-	jobwg  sync.WaitGroup
-	taskwg sync.WaitGroup
+	G      *generate.SnowIDGen
+	Q      *query.Query
+	Xr     *xredis.XRedis
+	Mc     *memcache.Client
+	Lc     *cache.Cache
+	Logger *log.Logger
+	P      *kafka.Producer
 )
 
-type asyncFollow struct {
-	uid   int64
-	touid int64
-}
-
-type rebuildCache struct {
-	uid    int64
-	lastid int64
-}
-
-type syncCount struct {
-	uid      int64
-	duration int64
-}
-
 func init() {
-	logger = log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile)
-	c = cron.New()
-	g, _ = generate.NewSnowIDGen("social")
-	q = query.Use(dal.SocialDB)
-	xr = dal.XRedis
-	mc = dal.MC
-	lc = dal.LC
-	followch = make(chan *asyncFollow, mux)
-	rebuildch = make(chan *rebuildCache, mux)
-	countch = make(chan *syncCount, mux)
+	Logger = log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile)
+	G, _ = generate.NewSnowIDGen("social")
+	Q = query.Use(dal.SocialDB)
+	Xr = dal.XRedis
+	Mc = dal.MC
+	Lc = dal.LC
+	P = dal.KAFKA
+	n.Store(0)
 }

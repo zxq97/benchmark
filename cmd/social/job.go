@@ -1,112 +1,45 @@
 package social
 
 import (
-	"bench/dal/query"
 	"context"
-	"fmt"
+	"sync/atomic"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/zxq97/gokit/pkg/cast"
+	"github.com/zxq97/gokit/pkg/mq/kafka"
 )
 
-func sendMsg(ctx context.Context, uid int64) {
-	key := fmt.Sprintf(lockkey, uid)
-	if xr.SetNX(ctx, key, time.Now().UnixMilli(), time.Second).Val() {
-		countch <- &syncCount{uid: uid}
-	}
-}
+var (
+	now time.Time
+	n   atomic.Value
+	cnt int64
+)
 
-func followOne(ctx context.Context, uid, touid int64) error {
-	err := q.Transaction(func(tx *query.Query) error {
-		if err := q.WithContext(ctx).Follow.InsertFollow(uid, touid); err != nil {
+func ConsumerFollow(ctx context.Context, msg *kafka.KafkaMessage) error {
+	switch msg.EventType {
+	case 0:
+		if n.CompareAndSwap(0, 1) {
+			now = time.Now()
+		}
+		if cur := atomic.AddInt64(&cnt, 1); cur%10000 == 0 {
+			Logger.Println(cur, time.Since(now))
+		}
+		argc := &Message{}
+		if err := proto.Unmarshal(msg.Message, argc); err != nil {
 			return err
 		}
-		if err := q.WithContext(ctx).Follower.InsertFollower(touid, uid); err != nil {
+		if err := followOne(ctx, argc.Uid, argc.TargetId); err != nil {
 			return err
 		}
-		if err := q.WithContext(ctx).FollowCount.IncrFollowCount(uid); err != nil {
-			return err
-		}
-		return q.WithContext(ctx).ExtraFollower.InsertFollower(touid)
-	})
-	if err != nil {
-		return err
-	}
-	sendMsg(ctx, touid)
-	return nil
-}
-
-func unfollowOne(ctx context.Context, uid, touid int64) error {
-	err := q.Transaction(func(tx *query.Query) error {
-		if err := q.WithContext(ctx).Follow.DeleteFollow(uid, touid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).Follower.DeleteFollower(touid, uid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).FollowCount.DecrFollowCount(uid); err != nil {
-			return err
-		}
-		return q.WithContext(ctx).ExtraFollower.DeleteFollower(touid)
-	})
-	if err != nil {
-		return err
-	}
-	sendMsg(ctx, touid)
-	return nil
-}
-
-func follow(ctx context.Context, uid, touid int64) error {
-	return q.Transaction(func(tx *query.Query) error {
-		if err := q.WithContext(ctx).Follow.InsertFollow(uid, touid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).Follower.InsertFollower(touid, uid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).FollowCount.IncrFollowCount(uid); err != nil {
-			return err
-		}
-		return q.WithContext(ctx).FollowCount.IncrByFollowerCount(touid, 1)
-	})
-}
-
-func unfollow(ctx context.Context, uid, touid int64) error {
-	return q.Transaction(func(tx *query.Query) error {
-		if err := q.WithContext(ctx).Follow.DeleteFollow(uid, touid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).Follower.DeleteFollower(touid, uid); err != nil {
-			return err
-		}
-		if err := q.WithContext(ctx).FollowCount.DecrFollowCount(uid); err != nil {
-			return err
-		}
-		return q.WithContext(ctx).FollowCount.DecrByFollowerCount(touid, 1)
-	})
-}
-
-func jobConsumer(ctx context.Context, ch <-chan *asyncFollow) {
-	defer jobwg.Done()
-	for {
-		select {
-		case val, ok := <-ch:
-			if ok {
-				ctx, cancel := context.WithTimeout(ctx, time.Second)
-				if err := follow(ctx, val.uid, val.touid); err != nil {
-					logger.Println(val, err)
-				}
-				cancel()
-			} else {
-				return
+		if ok, _ := sendSyncLock(ctx, argc.TargetId); ok {
+			if err := P.SendMessage(ctx, Topicsync, cast.FormatInt(argc.TargetId), &Message{Uid: argc.TargetId, TargetId: 0}, 1); err != nil {
+				Logger.Println(err)
 			}
-		case <-ctx.Done():
-			return
 		}
-	}
-}
+		//return follow(ctx, argc.Uid, argc.TargetId)
+	case 1:
 
-func newJobConsumer(ctx context.Context, n int, ch <-chan *asyncFollow) {
-	jobwg.Add(n)
-	for i := 0; i < n; i++ {
-		go jobConsumer(ctx, ch)
 	}
+	return nil
 }

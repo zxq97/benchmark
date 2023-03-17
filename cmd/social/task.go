@@ -1,69 +1,29 @@
 package social
 
 import (
-	"bench/dal/query"
 	"context"
-	"fmt"
+	"sync/atomic"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/golang/protobuf/proto"
+	"github.com/zxq97/gokit/pkg/mq/kafka"
 )
 
-func syncRecordByUID(ctx context.Context, uid int64) error {
-	var cnt int64
-	err := q.Transaction(func(tx *query.Query) error {
-		rows, err := q.WithContext(ctx).ExtraFollower.FindUnSyncRecordByUID(uid)
-		if err != nil || len(rows) == 0 {
+func ConsumerSync(ctx context.Context, msg *kafka.KafkaMessage) error {
+	switch msg.EventType {
+	case 0:
+	case 1:
+		if n.CompareAndSwap(0, 1) {
+			now = time.Now()
+		}
+		if cur := atomic.AddInt64(&cnt, 1); cur%1000 == 0 {
+			Logger.Println(cur, time.Since(now))
+		}
+		argc := &Message{}
+		if err := proto.Unmarshal(msg.Message, argc); err != nil {
 			return err
 		}
-		ids := make([]int64, len(rows))
-		for k, v := range rows {
-			ids[k] = v.ID
-			if v.Stats == 0 {
-				cnt++
-			} else {
-				cnt--
-			}
-		}
-		if cnt > 0 {
-			if err = tx.WithContext(ctx).FollowCount.IncrByFollowerCount(uid, cnt); err != nil {
-				return err
-			}
-		} else if cnt < 0 {
-			if err = tx.WithContext(ctx).FollowCount.DecrByFollowerCount(uid, -cnt); err != nil {
-				return err
-			}
-		}
-		return tx.WithContext(ctx).ExtraFollower.DeleteRecord(ids)
-	})
-	if err != nil {
-		return err
+		return syncCount(ctx, argc.Uid)
 	}
-	key := fmt.Sprintf(redisKeyHRelationCount, uid)
-	return xr.HIncrByXEX(ctx, key, followerField, cnt, time.Hour*8)
-}
-
-func taskConsumer(ctx context.Context, ch <-chan *syncCount) {
-	defer taskwg.Done()
-	for {
-		select {
-		case val, ok := <-ch:
-			if ok {
-				if err := syncRecordByUID(context.TODO(), val.uid); err != nil && err != redis.Nil {
-					logger.Println(val.uid, err)
-				}
-			} else {
-				return
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func newTaskConsumer(ctx context.Context, n int, ch <-chan *syncCount) {
-	taskwg.Add(n)
-	for i := 0; i < n; i++ {
-		go taskConsumer(ctx, ch)
-	}
+	return nil
 }

@@ -111,7 +111,7 @@ func (f follow) replaceDB(db *gorm.DB) follow {
 
 type followDo struct{ gen.DO }
 
-// sql(insert into follow (uid, follow_uid) values (@uid, @touid))
+// sql(insert into @@table (uid, follow_uid) values (@uid, @touid))
 func (f followDo) InsertFollow(uid int64, touid int64) (err error) {
 	var params []interface{}
 
@@ -127,14 +127,14 @@ func (f followDo) InsertFollow(uid int64, touid int64) (err error) {
 	return
 }
 
-// sql(delete from follow where uid=@uid and follow=@uid limit 1)
+// sql(delete from @@table where uid=@uid and follow_uid=@touid limit 1)
 func (f followDo) DeleteFollow(uid int64, touid int64) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, uid)
-	params = append(params, uid)
-	generateSQL.WriteString("delete from follow where uid=? and follow=? limit 1 ")
+	params = append(params, touid)
+	generateSQL.WriteString("delete from follow where uid=? and follow_uid=? limit 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = f.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
@@ -143,13 +143,13 @@ func (f followDo) DeleteFollow(uid int64, touid int64) (err error) {
 	return
 }
 
-// sql(select follow, ctime from follow where uid=@uid)
+// sql(select uid, follow_uid, ctime from @@table where uid=@uid)
 func (f followDo) FindUserFollow(uid int64) (result []*model.Follow, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, uid)
-	generateSQL.WriteString("select follow, ctime from follow where uid=? ")
+	generateSQL.WriteString("select uid, follow_uid, ctime from follow where uid=? ")
 
 	var executeSQL *gorm.DB
 	executeSQL = f.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert

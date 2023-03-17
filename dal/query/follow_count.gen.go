@@ -117,7 +117,7 @@ func (f followCount) replaceDB(db *gorm.DB) followCount {
 
 type followCountDo struct{ gen.DO }
 
-// sql(insert into follow_count (uid, follow_count) values (@uid, 1) on duplicate key update follow_count=follow_count+1)
+// sql(insert into @@table (uid, follow_count) values (@uid, 1) on duplicate key update follow_count=follow_count+1)
 func (f followCountDo) IncrFollowCount(uid int64) (err error) {
 	var params []interface{}
 
@@ -132,7 +132,7 @@ func (f followCountDo) IncrFollowCount(uid int64) (err error) {
 	return
 }
 
-// sql(update follow_count set follow_count=follow_count-1 where uid=@uid limit 1)
+// sql(update @@table set follow_count=follow_count-1 where uid=@uid limit 1)
 func (f followCountDo) DecrFollowCount(uid int64) (err error) {
 	var params []interface{}
 
@@ -147,7 +147,7 @@ func (f followCountDo) DecrFollowCount(uid int64) (err error) {
 	return
 }
 
-// sql(insert into follow_count (uid, follower_count) values (@uid, @cnt) on duplicate key update follower_count=follower_count+@cnt)
+// sql(insert into @@table (uid, follower_count) values (@uid, @cnt) on duplicate key update follower_count=follower_count+@cnt)
 func (f followCountDo) IncrByFollowerCount(uid int64, cnt int64) (err error) {
 	var params []interface{}
 
@@ -164,14 +164,15 @@ func (f followCountDo) IncrByFollowerCount(uid int64, cnt int64) (err error) {
 	return
 }
 
-// sql(update follow_count set follower_count=follower_count-@cnt where uid=@uid limit 1)
+// sql(update @@table set follower_count=follower_count-@cnt where uid=@uid limit @cnt)
 func (f followCountDo) DecrByFollowerCount(uid int64, cnt int64) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, cnt)
 	params = append(params, uid)
-	generateSQL.WriteString("update follow_count set follower_count=follower_count-? where uid=? limit 1 ")
+	params = append(params, cnt)
+	generateSQL.WriteString("update follow_count set follower_count=follower_count-? where uid=? limit ? ")
 
 	var executeSQL *gorm.DB
 	executeSQL = f.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
@@ -180,13 +181,13 @@ func (f followCountDo) DecrByFollowerCount(uid int64, cnt int64) (err error) {
 	return
 }
 
-// sql(select uid, follow_count, follower_count follow_count where uid in (@uids))
+// sql(select uid, follow_count, follower_count from @@table where uid in (@uids))
 func (f followCountDo) FindUsersRelationCount(uids []int64) (result []*model.FollowCount, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, uids)
-	generateSQL.WriteString("select uid, follow_count, follower_count follow_count where uid in (?) ")
+	generateSQL.WriteString("select uid, follow_count, follower_count from follow_count where uid in (?) ")
 
 	var executeSQL *gorm.DB
 	executeSQL = f.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert

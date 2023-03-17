@@ -1,17 +1,17 @@
-package social
+package main
 
 import (
+	"bench/cmd/social"
 	"os"
 	"os/signal"
 	"syscall"
-	"testing"
 	"time"
 
 	"github.com/zxq97/gokit/pkg/mq/kafka"
 )
 
-func TestJobFollowC1(t *testing.T) {
-	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"127.0.0.1:9092"}}, []string{Topic}, "job", "jobc1name", ConsumerFollow, 10, 10, time.Second)
+func main() {
+	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"10.203.0.27:9292"}}, []string{social.Topic}, "job", "jobc1name", social.ConsumerFollow, 10, 10, time.Second)
 	if err != nil {
 		panic(err)
 	}
@@ -23,7 +23,7 @@ func TestJobFollowC1(t *testing.T) {
 	select {
 	case <-sig:
 		if err = c.Stop(); err != nil {
-			t.Error(err)
+			social.Logger.Println(err)
 		}
 		<-ch
 	}

@@ -1,0 +1,7 @@
+syntax = "proto3";
+package social;
+
+message Message {
+  int64 uid = 1;
+  int64 target_id = 2; // touid/lastid
+}

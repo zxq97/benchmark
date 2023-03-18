@@ -20,8 +20,8 @@ const (
 	FollowField   = "follow"
 	FollowerField = "follower"
 
-	Topic     = "poke_post_bar_channel_"
-	Topicsync = "poke_post_bar_channel__"
+	Topic     = "social"
+	Topicsync = "social_sync"
 )
 
 var (

@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"10.203.0.27:9092"}}, []string{social.Topic}, "job", "jobc1name", social.ConsumerFollow, 10, 10, time.Second)
+	c, ch, err := kafka.NewConsumer(&kafka.Config{[]string{"127.0.0.1:9092"}}, []string{social.Topic}, "job", "jobc1name", social.ConsumerFollow, 10, 10, time.Second)
 	if err != nil {
 		panic(err)
 	}
